@@ -22,7 +22,7 @@ const Layout = ({ children }) => {
         <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem' }}>
           <Link to="/" onClick={() => setIsMobileMenuOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none', color: 'white' }}>
             <img src="/logo.png" alt="Aurora" style={{ width: '40px', height: '40px', borderRadius: '8px', boxShadow: '0 0 15px rgba(167, 139, 250, 0.3)' }} />
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Aurora</span>
+            <span style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '0.05em', fontFamily: '"Anurati", "Poppins", sans-serif', textTransform: 'uppercase' }}>Aurora</span>
           </Link>
           
           {/* Desktop Navigation */}
