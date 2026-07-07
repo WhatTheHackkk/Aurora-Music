@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Waves } from 'lucide-react';
+import { Waves, Menu, X } from 'lucide-react';
 import Home from './pages/Home';
 import Converter from './pages/Converter';
 import EffectTool from './pages/EffectTool';
@@ -9,6 +9,8 @@ import './index.css';
 
 // Layout component to wrap our pages
 const Layout = ({ children }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   return (
     <>
       <div className="aurora-bg">
@@ -18,15 +20,44 @@ const Layout = ({ children }) => {
       </div>
       <header style={{ borderBottom: '1px solid var(--card-border)', background: 'var(--card)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50 }}>
         <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem' }}>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none', color: 'white' }}>
+          <Link to="/" onClick={() => setIsMobileMenuOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none', color: 'white' }}>
             <img src="/logo.png" alt="Aurora" style={{ width: '40px', height: '40px', borderRadius: '8px', boxShadow: '0 0 15px rgba(167, 139, 250, 0.3)' }} />
             <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Aurora</span>
           </Link>
-          <nav style={{ display: 'flex', gap: '1.5rem' }}>
+          
+          {/* Desktop Navigation */}
+          <nav className="desktop-nav">
             <Link to="/" style={{ color: 'var(--muted)', textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s' }} onMouseEnter={e => e.target.style.color = 'white'} onMouseLeave={e => e.target.style.color = 'var(--muted)'}>Tools</Link>
             <a href="#" style={{ color: 'var(--muted)', textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s' }} onMouseEnter={e => e.target.style.color = 'white'} onMouseLeave={e => e.target.style.color = 'var(--muted)'}>About</a>
           </nav>
+
+          {/* Mobile Menu Button */}
+          <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
+
+        {/* Mobile Navigation Drawer */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.nav
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              style={{
+                overflow: 'hidden',
+                background: 'rgba(24, 24, 27, 0.95)',
+                borderBottom: '1px solid var(--card-border)',
+                display: 'flex',
+                flexDirection: 'column',
+                padding: '0 1.5rem',
+              }}
+            >
+              <Link to="/" onClick={() => setIsMobileMenuOpen(false)} style={{ padding: '1rem 0', color: 'white', textDecoration: 'none', fontWeight: 500, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Tools</Link>
+              <a href="#" onClick={() => setIsMobileMenuOpen(false)} style={{ padding: '1rem 0', color: 'white', textDecoration: 'none', fontWeight: 500 }}>About</a>
+            </motion.nav>
+          )}
+        </AnimatePresence>
       </header>
       
       <main style={{ minHeight: 'calc(100vh - 73px)', display: 'flex', flexDirection: 'column' }}>
