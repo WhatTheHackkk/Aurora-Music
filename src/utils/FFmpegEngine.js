@@ -41,9 +41,22 @@ class FFmpegEngine {
     // Write file to FFmpeg FS
     await this.ffmpeg.writeFile(inputName, await fetchFile(file));
 
-    // Run conversion command
-    // e.g., ffmpeg -i input.mp3 output.wav
-    await this.ffmpeg.exec(['-i', inputName, outputName]);
+    // Run conversion command with MAX QUALITY parameters
+    let ffmpegArgs = ['-i', inputName];
+    
+    if (outputFormat === 'mp3') {
+      ffmpegArgs.push('-q:a', '0'); // Highest quality VBR for MP3
+    } else if (outputFormat === 'ogg') {
+      ffmpegArgs.push('-q:a', '10'); // Highest quality for OGG
+    } else if (outputFormat === 'wav') {
+      ffmpegArgs.push('-c:a', 'pcm_f32le'); // 32-bit float for WAV
+    } else if (outputFormat === 'flac') {
+      ffmpegArgs.push('-compression_level', '12'); // Max FLAC compression (still lossless, but best file size)
+    }
+
+    ffmpegArgs.push(outputName);
+    
+    await this.ffmpeg.exec(ffmpegArgs);
 
     // Read the result
     const data = await this.ffmpeg.readFile(outputName);

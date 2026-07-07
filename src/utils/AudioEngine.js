@@ -325,10 +325,10 @@ class AudioEngine {
     return this.bufferToWave(renderedBuffer, renderedBuffer.length);
   }
 
-  // Utility to convert AudioBuffer to WAV Blob
+  // Utility to convert AudioBuffer to WAV Blob (Upgraded to 32-bit Float)
   bufferToWave(abuffer, len) {
     let numOfChan = abuffer.numberOfChannels,
-        length = len * numOfChan * 2 + 44,
+        length = len * numOfChan * 4 + 44, // 4 bytes per sample for 32-bit float
         buffer = new ArrayBuffer(length),
         view = new DataView(buffer),
         channels = [], i, sample,
@@ -340,12 +340,12 @@ class AudioEngine {
     setUint32(0x45564157); // "WAVE"
     setUint32(0x20746d66); // "fmt " chunk
     setUint32(16); // length = 16
-    setUint16(1); // PCM (uncompressed)
+    setUint16(3); // 3 = IEEE Float (was 1 for PCM)
     setUint16(numOfChan);
     setUint32(abuffer.sampleRate);
-    setUint32(abuffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
-    setUint16(numOfChan * 2); // block-align
-    setUint16(16); // 16-bit 
+    setUint32(abuffer.sampleRate * 4 * numOfChan); // avg. bytes/sec
+    setUint16(numOfChan * 4); // block-align
+    setUint16(32); // 32-bit float
 
     setUint32(0x61746164); // "data" - chunk
     setUint32(length - pos - 4); // chunk length
@@ -355,10 +355,10 @@ class AudioEngine {
 
     while(pos < length) {
       for (i = 0; i < numOfChan; i++) {
-        sample = Math.max(-1, Math.min(1, channels[i][offset]));
-        sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0;
-        view.setInt16(pos, sample, true);
-        pos += 2;
+        sample = channels[i][offset];
+        // 32-bit float avoids clipping entirely
+        view.setFloat32(pos, sample, true);
+        pos += 4;
       }
       offset++;
     }
