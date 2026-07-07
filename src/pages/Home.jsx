@@ -24,21 +24,20 @@ import {
 
 const tools = [
   { id: '3d-audio', title: '3D Audio', description: 'Enhance the stereo sound by adding a 3D effect to it', icon: Headphones, color: '#E53E3E', category: 'effects' },
+  { id: '8d-audio', title: '8D Audio Generator', description: 'Create an immersive 360-degree rotating audio experience', icon: Headphones, color: '#D53F8C', category: 'effects' },
   { id: 'bass-booster', title: 'Bass Booster', description: 'Boost the bass of a song making it more bass heavy', icon: Speaker, color: '#D69E2E', category: 'effects' },
   { id: 'equalizer', title: 'Equalizer', description: 'Adjust the frequencies of your audio', icon: Sliders, color: '#38A169', category: 'effects' },
-  { id: 'pitch-shifter', title: 'Pitch Shifter', description: 'Change the pitch of your audio', icon: Music, color: '#3182CE', category: 'effects' },
+  { id: 'nightcore', title: 'Nightcore', description: 'Speed up your audio and shift the pitch up for high energy', icon: FastForward, color: '#E53E3E', category: 'effects' },
   { id: 'volume', title: 'Volume Changer', description: 'Make your audio louder or quieter', icon: Volume2, color: '#38A169', category: 'effects' },
-  { id: 'tempo', title: 'Tempo Changer', description: 'Make an audio file play faster or slower', icon: FastForward, color: '#E53E3E', category: 'effects' },
-  { id: 'converter', title: 'Converter', description: 'Convert any audio file to another file format', icon: FileAudio, color: '#3182CE', category: 'other' },
+  { id: 'tempo', title: 'Tempo Changer', description: 'Make an audio file play faster or slower without pitch shifting', icon: FastForward, color: '#E53E3E', category: 'effects' },
   
-  // Placeholders for tools we haven't built yet, routing to 404 or a generic "coming soon"
   { id: 'autopanner', title: 'Auto Panner', description: 'Make the audio alternate from left to right', icon: ArrowLeftRight, color: '#DD6B20', category: 'effects' },
   { id: 'reverb', title: 'Reverb', description: 'Increase the room size of your audio', icon: Radio, color: '#00B5D8', category: 'effects' },
   { id: 'noise-reducer', title: 'Noise Reducer', description: 'Reduce background noise from recordings', icon: EarOff, color: '#319795', category: 'effects', comingSoon: true },
   { id: 'reverse', title: 'Reverse Audio', description: 'Reverse an audio file and make it play backwards', icon: History, color: '#805AD5', category: 'effects' },
   { id: 'stereo-panner', title: 'Stereo Panner', description: 'Pan the audio to left or right', icon: ArrowLeftRight, color: '#D53F8C', category: 'effects' },
   { id: 'trimmer', title: 'Trimmer / Cutter', description: 'Cut out a part of your audio file', icon: Scissors, color: '#DD6B20', category: 'effects' },
-  { id: 'vocal-remover', title: 'Vocal Remover', description: 'Remove the vocals from a song leaving only the instrumental', icon: MicOff, color: '#D69E2E', category: 'effects', comingSoon: true },
+  { id: 'vocal-remover', title: 'Vocal Remover', description: 'Remove the vocals from a song leaving only the instrumental', icon: MicOff, color: '#D69E2E', category: 'effects' },
   { id: 'downmixer', title: 'Downmixer', description: 'Reduce the amount of audio channels', icon: Merge, color: '#00B5D8', category: 'other' },
   { id: 'slowed-reverb', title: 'Slowed + Reverb', description: 'Give your audio an ethereal, dreamy vibe', icon: Radio, color: '#805AD5', category: 'effects' },
 ];

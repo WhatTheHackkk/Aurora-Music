@@ -3,6 +3,64 @@ import { motion } from 'framer-motion';
 import { Upload, Play, Square, Download, Settings, RefreshCw } from 'lucide-react';
 import { audioEngine } from '../utils/AudioEngine';
 
+const Visualizer = ({ isPlaying, color }) => {
+  const canvasRef = useRef(null);
+  
+  useEffect(() => {
+    if (!isPlaying) return;
+    
+    let animationId;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    const render = () => {
+      animationId = requestAnimationFrame(render);
+      const data = audioEngine.getVisualizerData();
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const barWidth = (canvas.width / data.length) * 2.5;
+      let x = 0;
+      
+      for (let i = 0; i < data.length; i++) {
+        const barHeight = (data[i] / 255) * canvas.height;
+        
+        // Add a nice glowing gradient effect
+        const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
+        gradient.addColorStop(0, `${color}40`);
+        gradient.addColorStop(1, color);
+        
+        ctx.fillStyle = gradient;
+        // Rounded tops
+        ctx.beginPath();
+        ctx.roundRect(x, canvas.height - barHeight, barWidth, barHeight, [4, 4, 0, 0]);
+        ctx.fill();
+        
+        x += barWidth + 2;
+      }
+    };
+    
+    render();
+    
+    return () => cancelAnimationFrame(animationId);
+  }, [isPlaying, color]);
+
+  return (
+    <canvas 
+      ref={canvasRef} 
+      width={800} 
+      height={120} 
+      style={{ 
+        width: '100%', 
+        height: '120px', 
+        borderRadius: 'var(--radius-md)', 
+        background: 'rgba(0,0,0,0.2)', 
+        marginBottom: '2rem',
+        boxShadow: `0 0 20px ${color}10`
+      }} 
+    />
+  );
+};
+
 export default function EffectTool({ type, title, description, color, icon }) {
   const [file, setFile] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -20,6 +78,7 @@ export default function EffectTool({ type, title, description, color, icon }) {
   const [stereoPan, setStereoPan] = useState(0);
   const [isReversed, setIsReversed] = useState(false);
   const [isMono, setIsMono] = useState(false);
+  const [isVocalRemover, setIsVocalRemover] = useState(false);
   const [trim, setTrim] = useState({ start: 0, end: 100, max: 100 });
   
   const fileInputRef = useRef(null);
@@ -49,13 +108,24 @@ export default function EffectTool({ type, title, description, color, icon }) {
         if (type === '3d-audio') setPosition3d({ x: 5, y: 0, z: -2, delayTime: 0.2, feedback: 0.4, filterFreq: 1500 });
         if (type === 'autopanner') setAutoPan({ rate: 2, depth: 0.5, type: 'sine' });
         if (type === 'reverb') setReverb({ mix: 0.5, roomSize: 2.0, decay: 2.0 });
+        
+        // New features
         if (type === 'slowed-reverb') {
           setTempo(0.85);
           setReverb({ mix: 0.4, roomSize: 4.0, decay: 3.5 });
         }
+        if (type === 'nightcore') {
+          setTempo(1.25);
+        }
+        if (type === '8d-audio') {
+          setAutoPan({ rate: 0.1, depth: 1.0, type: 'sine' });
+          setReverb({ mix: 0.6, roomSize: 3.5, decay: 3.0 });
+        }
+        
         if (type === 'reverse') setIsReversed(true); 
         if (type === 'stereo-panner') setStereoPan(0);
         if (type === 'downmixer') setIsMono(true);
+        if (type === 'vocal-remover') setIsVocalRemover(true);
         
         applyEffects();
       } catch (err) {
@@ -73,24 +143,29 @@ export default function EffectTool({ type, title, description, color, icon }) {
   const applyEffects = () => {
     if (type === 'bass-booster') audioEngine.setBass(bass.gain, bass.freq);
     if (type === 'volume') audioEngine.setVolume(volume);
-    if (type === 'tempo' || type === 'slowed-reverb') audioEngine.setPlaybackRate(tempo);
+    
+    if (type === 'tempo' || type === 'slowed-reverb') audioEngine.setPlaybackRate(tempo, false);
+    if (type === 'nightcore') audioEngine.setPlaybackRate(tempo, true); // true = pitch shift
+    
     if (type === 'equalizer') audioEngine.setEq(eq.eq60, eq.eq250, eq.eq1000, eq.eq4000, eq.eq12000);
     if (type === '3d-audio') {
       audioEngine.set3DPosition(position3d.x, position3d.y, position3d.z);
       audioEngine.setEcho(position3d.delayTime, position3d.feedback, position3d.filterFreq);
     }
-    if (type === 'autopanner') audioEngine.setAutoPan(autoPan.rate, autoPan.depth, autoPan.type);
-    if (type === 'reverb' || type === 'slowed-reverb') audioEngine.setReverb(reverb.mix, reverb.roomSize, reverb.decay);
+    if (type === 'autopanner' || type === '8d-audio') audioEngine.setAutoPan(autoPan.rate, autoPan.depth, autoPan.type);
+    if (type === 'reverb' || type === 'slowed-reverb' || type === '8d-audio') audioEngine.setReverb(reverb.mix, reverb.roomSize, reverb.decay);
     if (type === 'stereo-panner') audioEngine.setStereoPan(stereoPan);
     if (type === 'reverse') audioEngine.toggleReverse(isReversed);
     if (type === 'downmixer') audioEngine.toggleDownmix(isMono);
+    if (type === 'vocal-remover') audioEngine.toggleVocalRemover(isVocalRemover);
     if (type === 'trimmer') audioEngine.setTrim(trim.start, trim.end);
   };
 
   // Sync state changes to engine
   useEffect(() => {
+    if (!file) return;
     applyEffects();
-  }, [bass, volume, tempo, eq, position3d, autoPan, reverb, stereoPan, isReversed, isMono, trim]);
+  }, [bass, volume, tempo, eq, position3d, autoPan, reverb, stereoPan, isReversed, isMono, isVocalRemover, trim]);
 
   const togglePlay = () => {
     if (isPlaying) {
@@ -157,10 +232,20 @@ export default function EffectTool({ type, title, description, color, icon }) {
         return (
           <div style={{ marginTop: '2rem' }}>
             <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontWeight: 600 }}>
-              <span>Playback Speed / Pitch</span>
+              <span>Playback Speed (Preserves Pitch)</span>
               <span style={{ color: color }}>{tempo}x</span>
             </label>
             <input type="range" min="0.5" max="2" step="0.05" value={tempo} onChange={(e) => setTempo(Number(e.target.value))} />
+          </div>
+        );
+      case 'nightcore':
+        return (
+          <div style={{ marginTop: '2rem' }}>
+            <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontWeight: 600 }}>
+              <span>Nightcore Intensity (Speed + Pitch)</span>
+              <span style={{ color: color }}>{tempo.toFixed(2)}x</span>
+            </label>
+            <input type="range" min="1.0" max="2.0" step="0.05" value={tempo} onChange={(e) => setTempo(Number(e.target.value))} />
           </div>
         );
       case 'equalizer':
@@ -293,6 +378,38 @@ export default function EffectTool({ type, title, description, color, icon }) {
             <input type="range" min="0" max="1" step="0.05" value={reverb.mix} onChange={(e) => setReverb({...reverb, mix: Number(e.target.value)})} />
           </div>
         );
+      case '8d-audio':
+        return (
+          <div style={{ marginTop: '2rem' }}>
+            <h4 style={{ marginBottom: '1.5rem', color: 'var(--muted)' }}>8D Orbit Settings</h4>
+            <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontWeight: 600 }}>
+              <span>Orbit Speed (Hz)</span>
+              <span style={{ color: color }}>{autoPan.rate.toFixed(2)} Hz</span>
+            </label>
+            <input type="range" min="0.05" max="0.5" step="0.01" value={autoPan.rate} onChange={(e) => setAutoPan({...autoPan, rate: Number(e.target.value)})} />
+
+            <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', marginTop: '2rem', fontWeight: 600 }}>
+              <span>Room Size</span>
+              <span style={{ color: color }}>{reverb.roomSize.toFixed(1)}s</span>
+            </label>
+            <input type="range" min="1.0" max="6.0" step="0.1" value={reverb.roomSize} onChange={(e) => setReverb({...reverb, roomSize: Number(e.target.value)})} />
+          </div>
+        );
+      case 'vocal-remover':
+        return (
+          <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+            <button 
+              className="btn" 
+              style={{ background: isVocalRemover ? color : 'transparent', color: isVocalRemover ? 'white' : 'var(--foreground)', border: `1px solid ${color}` }}
+              onClick={() => setIsVocalRemover(!isVocalRemover)}
+            >
+              {isVocalRemover ? 'Vocals Removed (Karaoke Mode)' : 'Normal Audio (Click to Remove Vocals)'}
+            </button>
+            <p style={{ marginTop: '1.5rem', color: 'var(--muted)', fontSize: '0.85rem' }}>
+              Note: This uses phase cancellation. It removes audio panned to the exact center (typically lead vocals), but may also reduce center-panned instruments like bass or kick drums.
+            </p>
+          </div>
+        );
       case 'reverse':
         return (
           <div style={{ marginTop: '2rem', textAlign: 'center' }}>
@@ -410,7 +527,7 @@ export default function EffectTool({ type, title, description, color, icon }) {
             <button className="btn btn-secondary">Browse Files</button>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--radius-md)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div style={{ background: `${color}20`, padding: '0.75rem', borderRadius: '0.5rem', color: color }}>
@@ -423,6 +540,8 @@ export default function EffectTool({ type, title, description, color, icon }) {
               </div>
               <button onClick={() => { setFile(null); audioEngine.stop(); }} className="btn" style={{ background: 'transparent', color: 'var(--muted)' }}>Remove</button>
             </div>
+
+            <Visualizer isPlaying={isPlaying} color={color} />
 
             {renderControls()}
 

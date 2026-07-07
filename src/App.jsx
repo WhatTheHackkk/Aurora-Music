@@ -97,6 +97,9 @@ const AnimatedRoutes = () => {
         <Route path="/trimmer" element={<PageTransition><EffectTool type="trimmer" title="Trimmer / Cutter" description="Cut out a part of your audio file" icon="Scissors" color="#DD6B20" /></PageTransition>} />
         <Route path="/downmixer" element={<PageTransition><EffectTool type="downmixer" title="Downmixer" description="Reduce the amount of audio channels" icon="Merge" color="#00B5D8" /></PageTransition>} />
         <Route path="/slowed-reverb" element={<PageTransition><EffectTool type="slowed-reverb" title="Slowed + Reverb" description="Give your audio an ethereal, dreamy vibe" icon="Radio" color="#805AD5" /></PageTransition>} />
+        <Route path="/nightcore" element={<PageTransition><EffectTool type="nightcore" title="Nightcore Preset" description="Speed up your audio and shift the pitch up for high energy" icon="FastForward" color="#E53E3E" /></PageTransition>} />
+        <Route path="/8d-audio" element={<PageTransition><EffectTool type="8d-audio" title="8D Audio Generator" description="Create an immersive 360-degree rotating audio experience" icon="Headphones" color="#D53F8C" /></PageTransition>} />
+        <Route path="/vocal-remover" element={<PageTransition><EffectTool type="vocal-remover" title="Vocal Remover" description="Isolate the instrumental by canceling out center-panned vocals" icon="MicOff" color="#D69E2E" /></PageTransition>} />
       </Routes>
     </AnimatePresence>
   );

@@ -98,8 +98,13 @@ class AudioEngine {
     // Dry to master
     this.dryGain.connect(this.gainNode);
     
-    // Master out
-    this.gainNode.connect(this.audioContext.destination);
+    // Master out to Analyser (for visualizer)
+    this.analyser = this.audioContext.createAnalyser();
+    this.analyser.fftSize = 256;
+    this.gainNode.connect(this.analyser);
+    
+    // Analyser to Destination
+    this.analyser.connect(this.audioContext.destination);
 
     this.isPlaying = false;
     this.playbackRate = 1.0;
@@ -107,6 +112,13 @@ class AudioEngine {
     this.isMono = false;
     this.trimStart = 0;
     this.trimEnd = 0;
+    this.isNightcore = false;
+  }
+
+  getVisualizerData() {
+    const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+    this.analyser.getByteFrequencyData(dataArray);
+    return dataArray;
   }
 
   generateImpulseResponse(duration, decay) {
@@ -140,6 +152,11 @@ class AudioEngine {
     this.sourceNode = this.audioContext.createBufferSource();
     this.sourceNode.buffer = this.audioBuffer;
     this.sourceNode.playbackRate.value = this.playbackRate;
+    
+    // Support for pitch-shifting (Nightcore) vs pitch-preserving (Tempo)
+    if ('preservesPitch' in this.sourceNode) {
+      this.sourceNode.preservesPitch = !this.isNightcore;
+    }
     
     this.sourceNode.connect(this.bassFilter);
     
@@ -191,10 +208,14 @@ class AudioEngine {
     this.echoFilter.frequency.value = filterFreq;
   }
   
-  setPlaybackRate(value) {
+  setPlaybackRate(value, isNightcore = false) {
     this.playbackRate = value;
+    this.isNightcore = isNightcore;
     if (this.sourceNode) {
       this.sourceNode.playbackRate.value = value;
+      if ('preservesPitch' in this.sourceNode) {
+        this.sourceNode.preservesPitch = !this.isNightcore;
+      }
     }
   }
 
@@ -247,6 +268,36 @@ class AudioEngine {
   setTrim(start, end) {
     this.trimStart = start;
     this.trimEnd = end;
+  }
+
+  toggleVocalRemover(enabled) {
+    if (!this.originalBuffer) return;
+    
+    if (enabled && this.originalBuffer.numberOfChannels >= 2) {
+      // Create a mono buffer containing the difference (L - R) / 2
+      const newBuffer = this.audioContext.createBuffer(
+        1,
+        this.originalBuffer.length,
+        this.originalBuffer.sampleRate
+      );
+      
+      const L = this.originalBuffer.getChannelData(0);
+      const R = this.originalBuffer.getChannelData(1);
+      const output = newBuffer.getChannelData(0);
+      
+      for (let i = 0; i < this.originalBuffer.length; i++) {
+        // Phase cancellation for center-panned audio (vocals)
+        output[i] = (L[i] - R[i]) / 2;
+      }
+      this.audioBuffer = newBuffer;
+    } else {
+      this.audioBuffer = this.originalBuffer;
+    }
+    
+    if (this.isPlaying) {
+      this.stop();
+      this.play();
+    }
   }
 
   toggleDownmix(shouldDownmix) {
