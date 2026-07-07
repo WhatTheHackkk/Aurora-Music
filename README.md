@@ -1,41 +1,58 @@
 <div align="center">
-  <img src="public/logo.png" alt="Aurora Logo" width="120" height="120" style="border-radius: 20px; box-shadow: 0 0 20px rgba(167, 139, 250, 0.4);" />
-  <h1>Aurora Audio Toolkit</h1>
-  <p><strong>Your out-of-this-world online audio toolkit.</strong></p>
-  <p>Processed entirely securely in your browser using WebAssembly.</p>
+  <img src="public/logo.png" alt="Aurora Logo" width="150"/>
+  <h1>Aurora Music 🎵✨</h1>
+  <p><strong>Your Ethereal Online Audio Toolkit</strong></p>
+
+  [![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+  [![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)](https://reactjs.org/)
+  [![Firebase](https://img.shields.io/badge/firebase-%23039BE5.svg?style=for-the-badge&logo=firebase)](https://firebase.google.com/)
+  
+  <i>Create, Edit, and Transform Audio Locally In Your Browser</i>
 </div>
 
 ---
 
-## 🌌 The Vision
-Aurora is a sleek, highly-performant web application designed to replace clunky desktop audio editors with a frictionless, browser-based experience. Featuring an ethereal, glassmorphic UI, Aurora provides lightning-fast audio manipulation.
+## 🌌 Welcome to Aurora Music
+Aurora Music is an advanced, client-side web application designed to help you transform your music and audio files without ever leaving your browser. 
 
-**Original Idea & Concept by:** [WhatTheHackkk](https://github.com/WhatTheHackkk)  
-**Developed & Architected by:** Antigravity AI  
+Say goodbye to slow, server-based processing. Powered by the **Web Audio API** and **FFmpeg.wasm**, Aurora manipulates your files completely locally, ensuring top-tier privacy, blisteringly fast speeds, and uncompromised maximum audio quality. 
 
-## ✨ Features
-With Aurora, your files never leave your device. All processing is done locally in your browser using **FFmpeg WASM** and the **Web Audio API**.
+Whether you want to add an ethereal "Slowed + Reverb" vibe to a track, crank up the bass with a crossover filter, or craft spatial 3D audio effects—Aurora has you covered.
 
-*   🎛 **Equalizer:** Adjust frequencies precisely.
-*   🔉 **Bass Booster & Volume Changer:** Complete amplification control.
-*   🎧 **3D Audio & Auto Panner:** Immersive spatial effects.
-*   ⏳ **Tempo & Pitch Shifter:** Modify time and frequency domains independently.
-*   ✂️ **Trimmer / Cutter:** Extract exact clips.
-*   🔄 **Reverse Audio:** Play audio backwards effortlessly.
-*   🔀 **Converter:** Lossless conversion across formats.
-*   *Coming Soon: Machine-learning powered Vocal Remover & Noise Reducer.*
+**[Try Aurora Music Live Here!](https://aurora-audio.web.app)**
 
-## 🛠 Tech Stack
-*   **Frontend Framework:** React + Vite
-*   **Styling & UI:** Custom CSS + Framer Motion (for 3D ethereal physics)
-*   **Audio Engine:** Web Audio API (`OfflineAudioContext`)
-*   **Media Processing:** FFmpeg.wasm (`@ffmpeg/ffmpeg`)
-*   **Hosting:** Firebase Hosting (with COOP/COEP headers for SharedArrayBuffer support)
+## 🚀 Features
 
-## 🚀 Running Locally
-Because FFmpeg requires `SharedArrayBuffer`, the development server must be run with specific Cross-Origin headers.
+- **🎧 Ethereal Audio Effects**: Transform tracks with the custom **Slowed + Reverb** preset. Control room size, wet/dry mix, and playback speeds.
+- **🔊 5-Band Equalizer & Bass Booster**: Take control of your sound with a professional 5-band EQ and an advanced bass booster with an adjustable crossover frequency.
+- **🪐 Spatial 3D Audio**: Pan audio in an immersive 3D space with X and Z axis controls. Add the Haas Effect using fine-tuned Echo feedback and delay times.
+- **🔄 Auto-Panner**: Create mesmerizing stereo movement with sine, triangle, or square wave LFOs.
+- **🎙️ Converters & Extractors**: Uses `ffmpeg.wasm` for maximum quality conversions. Convert audio seamlessly to MP3, WAV, OGG, FLAC, and more.
+- **📱 Progressive Web App (PWA)**: Installable directly on your mobile device or desktop. Fully responsive layout with beautiful, dynamic frosted-glass UI and fluid micro-animations.
+
+## 🛠️ How It Was Made
+Aurora Music was created to provide a completely client-side toolkit with premium audio capabilities. The architecture relies on:
+
+1. **Web Audio API / OfflineAudioContext**: We built a custom `AudioEngine` graph routing system. Audio is streamed through a parallel effects graph including a Convolver Node for Reverb, Delay Nodes for Echoes, and BiquadFilters for the EQ and Bass crossover. Everything renders locally to an `OfflineAudioContext` for lightning-fast exporting in 32-bit float WAV format.
+2. **FFmpeg.wasm**: WebAssembly implementation of FFmpeg handles format conversion without servers. It runs in the highest possible quality mode (`-q:a 0`).
+3. **React + Vite**: A modern frontend framework for lightning-fast hot reloading and optimized production builds. 
+4. **Framer Motion**: Used for the smooth, glassy interactions and ethereal animations that bring the UI to life. 
+
+## 🧠 Credits
+- **Concept & Vision**: Designed and ideated by [WhatTheHackkk](https://github.com/WhatTheHackkk).
+- **Engineering & Implementation**: Built by Antigravity (Agentic AI Developer).
+
+## 💻 Local Development
+
+Want to run Aurora Music locally? 
 
 ```bash
+# Clone the repository
+git clone https://github.com/WhatTheHackkk/Aurora-Music.git
+
+# Navigate into the project
+cd Aurora-Music
+
 # Install dependencies
 npm install
 
@@ -43,5 +60,5 @@ npm install
 npm run dev
 ```
 
-## 🔒 Privacy First
-Unlike other online audio converters, Aurora does not upload your files to a remote server. The audio is decoded, processed, and encoded directly inside your browser's memory, ensuring 100% privacy.
+## 📄 License
+This project is open-source and free to use! Have fun transforming your audio.

@@ -8,38 +8,60 @@ class AudioEngine {
     // Core Nodes
     this.gainNode = this.audioContext.createGain();
     
-    // Effects Nodes
+    // 1. Bass Booster
     this.bassFilter = this.audioContext.createBiquadFilter();
     this.bassFilter.type = 'lowshelf';
-    this.bassFilter.frequency.value = 200;
+    this.bassFilter.frequency.value = 150; // default crossover
 
-    this.eqLow = this.audioContext.createBiquadFilter();
-    this.eqLow.type = 'lowshelf';
-    this.eqLow.frequency.value = 320;
+    // 2. 5-Band Equalizer
+    this.eq60 = this.audioContext.createBiquadFilter();
+    this.eq60.type = 'lowshelf';
+    this.eq60.frequency.value = 60;
     
-    this.eqMid = this.audioContext.createBiquadFilter();
-    this.eqMid.type = 'peaking';
-    this.eqMid.frequency.value = 1000;
-    this.eqMid.Q.value = 0.5;
+    this.eq250 = this.audioContext.createBiquadFilter();
+    this.eq250.type = 'peaking';
+    this.eq250.frequency.value = 250;
+    this.eq250.Q.value = 1.0;
     
-    this.eqHigh = this.audioContext.createBiquadFilter();
-    this.eqHigh.type = 'highshelf';
-    this.eqHigh.frequency.value = 3200;
+    this.eq1000 = this.audioContext.createBiquadFilter();
+    this.eq1000.type = 'peaking';
+    this.eq1000.frequency.value = 1000;
+    this.eq1000.Q.value = 1.0;
+    
+    this.eq4000 = this.audioContext.createBiquadFilter();
+    this.eq4000.type = 'peaking';
+    this.eq4000.frequency.value = 4000;
+    this.eq4000.Q.value = 1.0;
 
+    this.eq12000 = this.audioContext.createBiquadFilter();
+    this.eq12000.type = 'highshelf';
+    this.eq12000.frequency.value = 12000;
+
+    // 3. 3D Audio Panner
     this.panner3d = this.audioContext.createPanner();
     this.panner3d.panningModel = 'HRTF';
     this.panner3d.distanceModel = 'inverse';
 
+    // 4. Stereo Panner
     this.stereoPanner = this.audioContext.createStereoPanner();
 
-    // Reverb
+    // 5. Echo / Delay (Parallel)
+    this.delayNode = this.audioContext.createDelay(5.0); // max 5 seconds
+    this.delayNode.delayTime.value = 0.5; // default 500ms
+    this.feedbackGain = this.audioContext.createGain();
+    this.feedbackGain.gain.value = 0.0; // default off
+    this.echoFilter = this.audioContext.createBiquadFilter();
+    this.echoFilter.type = 'lowpass';
+    this.echoFilter.frequency.value = 2000; // darkens echo
+
+    // 6. Reverb (Parallel)
     this.convolver = this.audioContext.createConvolver();
     this.dryGain = this.audioContext.createGain();
     this.wetGain = this.audioContext.createGain();
     this.wetGain.gain.value = 0; // Default off
-    this.generateImpulseResponse(2.0, 2.0); // 2 sec duration, 2 sec decay
+    this.generateImpulseResponse(2.0, 2.0); // 2 sec duration, 2 sec decay default
 
-    // Auto Panner LFO
+    // 7. Auto Panner LFO
     this.lfo = this.audioContext.createOscillator();
     this.lfo.type = 'sine';
     this.lfoGain = this.audioContext.createGain();
@@ -49,20 +71,34 @@ class AudioEngine {
     this.lfo.start(); // Runs continuously
     
     // Setup routing chain
-    // source -> bass -> eqLow -> eqMid -> eqHigh -> panner3d -> stereoPanner -> [dry/wet] -> gain -> destination
-    this.bassFilter.connect(this.eqLow);
-    this.eqLow.connect(this.eqMid);
-    this.eqMid.connect(this.eqHigh);
-    this.eqHigh.connect(this.panner3d);
+    // source -> bass -> EQ -> panner3d -> stereoPanner -> [Delay] + [Reverb] + [Dry] -> gain -> destination
+    this.bassFilter.connect(this.eq60);
+    this.eq60.connect(this.eq250);
+    this.eq250.connect(this.eq1000);
+    this.eq1000.connect(this.eq4000);
+    this.eq4000.connect(this.eq12000);
+    this.eq12000.connect(this.panner3d);
     this.panner3d.connect(this.stereoPanner);
     
-    // Parallel processing for reverb
-    this.stereoPanner.connect(this.dryGain);
-    this.stereoPanner.connect(this.convolver);
+    // Split parallel paths from stereoPanner
+    this.stereoPanner.connect(this.dryGain);     // Dry signal path
+    this.stereoPanner.connect(this.convolver);   // Reverb path
+    this.stereoPanner.connect(this.delayNode);   // Echo path
+
+    // Echo feedback loop
+    this.delayNode.connect(this.echoFilter);
+    this.echoFilter.connect(this.feedbackGain);
+    this.feedbackGain.connect(this.delayNode);
+    this.echoFilter.connect(this.gainNode); // Echo goes to master out
+
+    // Reverb to master
     this.convolver.connect(this.wetGain);
-    
-    this.dryGain.connect(this.gainNode);
     this.wetGain.connect(this.gainNode);
+    
+    // Dry to master
+    this.dryGain.connect(this.gainNode);
+    
+    // Master out
     this.gainNode.connect(this.audioContext.destination);
 
     this.isPlaying = false;
@@ -70,10 +106,11 @@ class AudioEngine {
     this.isReversed = false;
     this.isMono = false;
     this.trimStart = 0;
-    this.trimEnd = 0; // 0 means full length
+    this.trimEnd = 0;
   }
 
   generateImpulseResponse(duration, decay) {
+    if (!this.audioContext) return;
     const sampleRate = this.audioContext.sampleRate;
     const length = sampleRate * duration;
     const impulse = this.audioContext.createBuffer(2, length, sampleRate);
@@ -129,20 +166,29 @@ class AudioEngine {
     this.gainNode.gain.value = value;
   }
 
-  setBass(value) {
-    this.bassFilter.gain.value = value;
+  setBass(gain, freq) {
+    this.bassFilter.gain.value = gain;
+    this.bassFilter.frequency.value = freq;
   }
 
-  setEq(low, mid, high) {
-    this.eqLow.gain.value = low;
-    this.eqMid.gain.value = mid;
-    this.eqHigh.gain.value = high;
+  setEq(eq60, eq250, eq1000, eq4000, eq12000) {
+    this.eq60.gain.value = eq60;
+    this.eq250.gain.value = eq250;
+    this.eq1000.gain.value = eq1000;
+    this.eq4000.gain.value = eq4000;
+    this.eq12000.gain.value = eq12000;
   }
 
   set3DPosition(x, y, z) {
     this.panner3d.positionX.value = x;
     this.panner3d.positionY.value = y;
     this.panner3d.positionZ.value = z;
+  }
+
+  setEcho(delayTime, feedback, filterFreq) {
+    this.delayNode.delayTime.value = delayTime;
+    this.feedbackGain.gain.value = feedback;
+    this.echoFilter.frequency.value = filterFreq;
   }
   
   setPlaybackRate(value) {
@@ -156,16 +202,18 @@ class AudioEngine {
     this.stereoPanner.pan.value = value;
   }
 
-  setAutoPan(rate, depth) {
-    // rate is freq in Hz (0.1 to 10), depth is amount (0 to 1)
+  setAutoPan(rate, depth, type = 'sine') {
     this.lfo.frequency.value = rate;
     this.lfoGain.gain.value = depth;
+    this.lfo.type = type;
   }
 
-  setReverb(mix) {
-    // mix from 0 to 1
+  setReverb(mix, duration, decay) {
     this.wetGain.gain.value = mix;
     this.dryGain.gain.value = 1 - mix;
+    if (duration !== undefined && decay !== undefined) {
+      this.generateImpulseResponse(duration, decay);
+    }
   }
 
   toggleReverse(shouldReverse) {
@@ -173,7 +221,6 @@ class AudioEngine {
     this.isReversed = shouldReverse;
     
     if (shouldReverse) {
-      // Create reversed buffer
       const reversed = this.audioContext.createBuffer(
         this.originalBuffer.numberOfChannels,
         this.originalBuffer.length,
@@ -191,7 +238,6 @@ class AudioEngine {
       this.audioBuffer = this.originalBuffer;
     }
     
-    // Restart if currently playing
     if (this.isPlaying) {
       this.stop();
       this.play();
@@ -208,7 +254,6 @@ class AudioEngine {
     this.isMono = shouldDownmix;
 
     if (shouldDownmix && this.originalBuffer.numberOfChannels > 1) {
-      // Create mono buffer
       const mono = this.audioContext.createBuffer(
         1,
         this.originalBuffer.length,
@@ -232,14 +277,13 @@ class AudioEngine {
     }
   }
 
-  // Generate an offline rendering to download the modified file
   async export(fileName, format = 'wav') {
     if (!this.audioBuffer) return null;
 
     const exportDuration = this.trimEnd > this.trimStart ? this.trimEnd - this.trimStart : this.audioBuffer.duration;
-    const length = Math.floor(exportDuration * this.audioBuffer.sampleRate);
+    // Add 2 seconds to export length to allow for reverb/echo trails
+    const length = Math.floor((exportDuration + 2.0) * this.audioBuffer.sampleRate);
 
-    // Use current buffer (which might be reversed or mono)
     const offlineCtx = new OfflineAudioContext(
       this.audioBuffer.numberOfChannels,
       length,
@@ -252,24 +296,36 @@ class AudioEngine {
 
     const bass = offlineCtx.createBiquadFilter();
     bass.type = 'lowshelf';
-    bass.frequency.value = 200;
+    bass.frequency.value = this.bassFilter.frequency.value;
     bass.gain.value = this.bassFilter.gain.value;
 
-    const eqLow = offlineCtx.createBiquadFilter();
-    eqLow.type = 'lowshelf';
-    eqLow.frequency.value = 320;
-    eqLow.gain.value = this.eqLow.gain.value;
+    const eq60 = offlineCtx.createBiquadFilter();
+    eq60.type = 'lowshelf';
+    eq60.frequency.value = 60;
+    eq60.gain.value = this.eq60.gain.value;
 
-    const eqMid = offlineCtx.createBiquadFilter();
-    eqMid.type = 'peaking';
-    eqMid.frequency.value = 1000;
-    eqMid.Q.value = 0.5;
-    eqMid.gain.value = this.eqMid.gain.value;
+    const eq250 = offlineCtx.createBiquadFilter();
+    eq250.type = 'peaking';
+    eq250.frequency.value = 250;
+    eq250.Q.value = 1.0;
+    eq250.gain.value = this.eq250.gain.value;
 
-    const eqHigh = offlineCtx.createBiquadFilter();
-    eqHigh.type = 'highshelf';
-    eqHigh.frequency.value = 3200;
-    eqHigh.gain.value = this.eqHigh.gain.value;
+    const eq1000 = offlineCtx.createBiquadFilter();
+    eq1000.type = 'peaking';
+    eq1000.frequency.value = 1000;
+    eq1000.Q.value = 1.0;
+    eq1000.gain.value = this.eq1000.gain.value;
+
+    const eq4000 = offlineCtx.createBiquadFilter();
+    eq4000.type = 'peaking';
+    eq4000.frequency.value = 4000;
+    eq4000.Q.value = 1.0;
+    eq4000.gain.value = this.eq4000.gain.value;
+
+    const eq12000 = offlineCtx.createBiquadFilter();
+    eq12000.type = 'highshelf';
+    eq12000.frequency.value = 12000;
+    eq12000.gain.value = this.eq12000.gain.value;
 
     const panner3d = offlineCtx.createPanner();
     panner3d.panningModel = 'HRTF';
@@ -281,10 +337,9 @@ class AudioEngine {
     const stereoPanner = offlineCtx.createStereoPanner();
     stereoPanner.pan.value = this.stereoPanner.pan.value;
     
-    // We can't perfectly replicate LFO auto-pan in offline export easily without connecting an oscillator in offline context
-    // Let's add the LFO to the offline context
+    // Auto Panner
     const offlineLFO = offlineCtx.createOscillator();
-    offlineLFO.type = 'sine';
+    offlineLFO.type = this.lfo.type;
     offlineLFO.frequency.value = this.lfo.frequency.value;
     const offlineLFOGain = offlineCtx.createGain();
     offlineLFOGain.gain.value = this.lfoGain.gain.value;
@@ -292,6 +347,16 @@ class AudioEngine {
     offlineLFOGain.connect(stereoPanner.pan);
     offlineLFO.start(0);
 
+    // Echo
+    const delayNode = offlineCtx.createDelay(5.0);
+    delayNode.delayTime.value = this.delayNode.delayTime.value;
+    const feedbackGain = offlineCtx.createGain();
+    feedbackGain.gain.value = this.feedbackGain.gain.value;
+    const echoFilter = offlineCtx.createBiquadFilter();
+    echoFilter.type = 'lowpass';
+    echoFilter.frequency.value = this.echoFilter.frequency.value;
+
+    // Reverb
     const convolver = offlineCtx.createConvolver();
     convolver.buffer = this.convolver.buffer;
     const dryGain = offlineCtx.createGain();
@@ -302,30 +367,39 @@ class AudioEngine {
     const gain = offlineCtx.createGain();
     gain.gain.value = this.gainNode.gain.value;
 
+    // Graph Connection
     source.connect(bass);
-    bass.connect(eqLow);
-    eqLow.connect(eqMid);
-    eqMid.connect(eqHigh);
-    eqHigh.connect(panner3d);
+    bass.connect(eq60);
+    eq60.connect(eq250);
+    eq250.connect(eq1000);
+    eq1000.connect(eq4000);
+    eq4000.connect(eq12000);
+    eq12000.connect(panner3d);
     panner3d.connect(stereoPanner);
     
+    // Split
     stereoPanner.connect(dryGain);
     stereoPanner.connect(convolver);
+    stereoPanner.connect(delayNode);
+
+    // Echo feedback loop
+    delayNode.connect(echoFilter);
+    echoFilter.connect(feedbackGain);
+    feedbackGain.connect(delayNode);
+    echoFilter.connect(gain);
+
     convolver.connect(wetGain);
-    
-    dryGain.connect(gain);
     wetGain.connect(gain);
+    dryGain.connect(gain);
+    
     gain.connect(offlineCtx.destination);
 
-    const duration = this.trimEnd > this.trimStart ? this.trimEnd - this.trimStart : this.audioBuffer.duration;
-    source.start(0, this.trimStart, duration);
+    source.start(0, this.trimStart, exportDuration);
     
     const renderedBuffer = await offlineCtx.startRendering();
-    
     return this.bufferToWave(renderedBuffer, renderedBuffer.length);
   }
 
-  // Utility to convert AudioBuffer to WAV Blob (Upgraded to 32-bit Float)
   bufferToWave(abuffer, len) {
     let numOfChan = abuffer.numberOfChannels,
         length = len * numOfChan * 4 + 44, // 4 bytes per sample for 32-bit float
@@ -340,7 +414,7 @@ class AudioEngine {
     setUint32(0x45564157); // "WAVE"
     setUint32(0x20746d66); // "fmt " chunk
     setUint32(16); // length = 16
-    setUint16(3); // 3 = IEEE Float (was 1 for PCM)
+    setUint16(3); // 3 = IEEE Float
     setUint16(numOfChan);
     setUint32(abuffer.sampleRate);
     setUint32(abuffer.sampleRate * 4 * numOfChan); // avg. bytes/sec
@@ -356,7 +430,6 @@ class AudioEngine {
     while(pos < length) {
       for (i = 0; i < numOfChan; i++) {
         sample = channels[i][offset];
-        // 32-bit float avoids clipping entirely
         view.setFloat32(pos, sample, true);
         pos += 4;
       }

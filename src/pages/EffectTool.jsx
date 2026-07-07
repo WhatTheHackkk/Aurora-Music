@@ -10,13 +10,13 @@ export default function EffectTool({ type, title, description, color, icon }) {
   const [isDragActive, setIsDragActive] = useState(false);
   
   // Effect state
-  const [bass, setBass] = useState(0);
+  const [bass, setBass] = useState({ gain: 0, freq: 150 });
   const [volume, setVolume] = useState(1);
   const [tempo, setTempo] = useState(1);
-  const [eq, setEq] = useState({ low: 0, mid: 0, high: 0 });
-  const [position3d, setPosition3d] = useState({ x: 0, y: 0, z: 0 });
-  const [autoPan, setAutoPan] = useState({ rate: 2, depth: 0.5 });
-  const [reverb, setReverb] = useState(0.5);
+  const [eq, setEq] = useState({ eq60: 0, eq250: 0, eq1000: 0, eq4000: 0, eq12000: 0 });
+  const [position3d, setPosition3d] = useState({ x: 0, y: 0, z: 0, delayTime: 0.5, feedback: 0, filterFreq: 2000 });
+  const [autoPan, setAutoPan] = useState({ rate: 2, depth: 0.5, type: 'sine' });
+  const [reverb, setReverb] = useState({ mix: 0.5, roomSize: 2.0, decay: 2.0 });
   const [stereoPan, setStereoPan] = useState(0);
   const [isReversed, setIsReversed] = useState(false);
   const [isMono, setIsMono] = useState(false);
@@ -42,13 +42,17 @@ export default function EffectTool({ type, title, description, color, icon }) {
         await audioEngine.loadFile(selectedFile);
         
         // Reset effects based on type
-        if (type === 'bass-booster') setBass(10);
+        if (type === 'bass-booster') setBass({ gain: 10, freq: 150 });
         if (type === 'volume') setVolume(1.5);
         if (type === 'tempo') setTempo(1.5);
-        if (type === 'equalizer') setEq({ low: 5, mid: 0, high: 5 });
-        if (type === '3d-audio') setPosition3d({ x: 5, y: 0, z: -2 });
-        if (type === 'autopanner') setAutoPan({ rate: 2, depth: 0.5 });
-        if (type === 'reverb') setReverb(0.5);
+        if (type === 'equalizer') setEq({ eq60: 5, eq250: 3, eq1000: 0, eq4000: 2, eq12000: 5 });
+        if (type === '3d-audio') setPosition3d({ x: 5, y: 0, z: -2, delayTime: 0.2, feedback: 0.4, filterFreq: 1500 });
+        if (type === 'autopanner') setAutoPan({ rate: 2, depth: 0.5, type: 'sine' });
+        if (type === 'reverb') setReverb({ mix: 0.5, roomSize: 2.0, decay: 2.0 });
+        if (type === 'slowed-reverb') {
+          setTempo(0.85);
+          setReverb({ mix: 0.4, roomSize: 4.0, decay: 3.5 });
+        }
         if (type === 'reverse') setIsReversed(true); 
         if (type === 'stereo-panner') setStereoPan(0);
         if (type === 'downmixer') setIsMono(true);
@@ -62,19 +66,21 @@ export default function EffectTool({ type, title, description, color, icon }) {
           const maxDur = audioEngine.audioBuffer ? audioEngine.audioBuffer.duration : 100;
           setTrim({ start: 0, end: maxDur, max: maxDur });
         }
-        setIsLoading(false);
       }
     }
   };
 
   const applyEffects = () => {
-    if (type === 'bass-booster') audioEngine.setBass(bass);
+    if (type === 'bass-booster') audioEngine.setBass(bass.gain, bass.freq);
     if (type === 'volume') audioEngine.setVolume(volume);
-    if (type === 'tempo') audioEngine.setPlaybackRate(tempo);
-    if (type === 'equalizer') audioEngine.setEq(eq.low, eq.mid, eq.high);
-    if (type === '3d-audio') audioEngine.set3DPosition(position3d.x, position3d.y, position3d.z);
-    if (type === 'autopanner') audioEngine.setAutoPan(autoPan.rate, autoPan.depth);
-    if (type === 'reverb') audioEngine.setReverb(reverb);
+    if (type === 'tempo' || type === 'slowed-reverb') audioEngine.setPlaybackRate(tempo);
+    if (type === 'equalizer') audioEngine.setEq(eq.eq60, eq.eq250, eq.eq1000, eq.eq4000, eq.eq12000);
+    if (type === '3d-audio') {
+      audioEngine.set3DPosition(position3d.x, position3d.y, position3d.z);
+      audioEngine.setEcho(position3d.delayTime, position3d.feedback, position3d.filterFreq);
+    }
+    if (type === 'autopanner') audioEngine.setAutoPan(autoPan.rate, autoPan.depth, autoPan.type);
+    if (type === 'reverb' || type === 'slowed-reverb') audioEngine.setReverb(reverb.mix, reverb.roomSize, reverb.decay);
     if (type === 'stereo-panner') audioEngine.setStereoPan(stereoPan);
     if (type === 'reverse') audioEngine.toggleReverse(isReversed);
     if (type === 'downmixer') audioEngine.toggleDownmix(isMono);
@@ -121,13 +127,19 @@ export default function EffectTool({ type, title, description, color, icon }) {
           <div style={{ marginTop: '2rem' }}>
             <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontWeight: 600 }}>
               <span>Bass Boost Level</span>
-              <span style={{ color: color }}>{bass} dB</span>
+              <span style={{ color: color }}>{bass.gain} dB</span>
             </label>
             <input 
-              type="range" 
-              min="0" max="30" step="1" 
-              value={bass} 
-              onChange={(e) => setBass(Number(e.target.value))} 
+              type="range" min="0" max="30" step="1" 
+              value={bass.gain} onChange={(e) => setBass({...bass, gain: Number(e.target.value)})} 
+            />
+            <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', marginTop: '2rem', fontWeight: 600 }}>
+              <span>Crossover Frequency</span>
+              <span style={{ color: color }}>{bass.freq} Hz</span>
+            </label>
+            <input 
+              type="range" min="40" max="300" step="5" 
+              value={bass.freq} onChange={(e) => setBass({...bass, freq: Number(e.target.value)})} 
             />
           </div>
         );
@@ -138,43 +150,40 @@ export default function EffectTool({ type, title, description, color, icon }) {
               <span>Volume Multiplier</span>
               <span style={{ color: color }}>{volume}x</span>
             </label>
-            <input 
-              type="range" 
-              min="0" max="3" step="0.1" 
-              value={volume} 
-              onChange={(e) => setVolume(Number(e.target.value))} 
-            />
+            <input type="range" min="0" max="3" step="0.1" value={volume} onChange={(e) => setVolume(Number(e.target.value))} />
           </div>
         );
       case 'tempo':
         return (
           <div style={{ marginTop: '2rem' }}>
             <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontWeight: 600 }}>
-              <span>Playback Speed</span>
+              <span>Playback Speed / Pitch</span>
               <span style={{ color: color }}>{tempo}x</span>
             </label>
-            <input 
-              type="range" 
-              min="0.5" max="2" step="0.1" 
-              value={tempo} 
-              onChange={(e) => setTempo(Number(e.target.value))} 
-            />
+            <input type="range" min="0.5" max="2" step="0.05" value={tempo} onChange={(e) => setTempo(Number(e.target.value))} />
           </div>
         );
       case 'equalizer':
+        const eqBands = [
+          { key: 'eq60', label: '60 Hz (Sub)' },
+          { key: 'eq250', label: '250 Hz (Low)' },
+          { key: 'eq1000', label: '1 kHz (Mid)' },
+          { key: 'eq4000', label: '4 kHz (High-Mid)' },
+          { key: 'eq12000', label: '12 kHz (Air)' }
+        ];
         return (
-          <div style={{ marginTop: '2rem', display: 'flex', gap: '2rem' }}>
-            {['low', 'mid', 'high'].map(band => (
-              <div key={band} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ marginBottom: '1rem', fontWeight: 600, textTransform: 'capitalize' }}>{band}</span>
+          <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem' }}>
+            {eqBands.map(band => (
+              <div key={band.key} style={{ flex: 1, minWidth: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{ marginBottom: '1rem', fontWeight: 600, fontSize: '0.85rem', textAlign: 'center' }}>{band.label}</span>
                 <input 
                   type="range" 
                   style={{ transform: 'rotate(270deg)', width: '150px', margin: '4rem 0' }}
                   min="-20" max="20" step="1" 
-                  value={eq[band]} 
-                  onChange={(e) => setEq({...eq, [band]: Number(e.target.value)})} 
+                  value={eq[band.key]} 
+                  onChange={(e) => setEq({...eq, [band.key]: Number(e.target.value)})} 
                 />
-                <span style={{ color: color }}>{eq[band]} dB</span>
+                <span style={{ color: color }}>{eq[band.key] > 0 ? '+' : ''}{eq[band.key]} dB</span>
               </div>
             ))}
           </div>
@@ -182,39 +191,58 @@ export default function EffectTool({ type, title, description, color, icon }) {
       case '3d-audio':
         return (
           <div style={{ marginTop: '2rem' }}>
+            <h4 style={{ marginBottom: '1.5rem', color: 'var(--muted)' }}>Spatial Positioning</h4>
             <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontWeight: 600 }}>
-              <span>3D Position (Left/Right)</span>
+              <span>Left / Right (X-Axis)</span>
               <span style={{ color: color }}>{position3d.x}</span>
             </label>
-            <input 
-              type="range" 
-              min="-10" max="10" step="1" 
-              value={position3d.x} 
-              onChange={(e) => setPosition3d({...position3d, x: Number(e.target.value)})} 
-            />
+            <input type="range" min="-10" max="10" step="1" value={position3d.x} onChange={(e) => setPosition3d({...position3d, x: Number(e.target.value)})} />
+            
             <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', marginTop: '2rem', fontWeight: 600 }}>
-              <span>Distance (Forward/Back)</span>
+              <span>Forward / Back (Z-Axis)</span>
               <span style={{ color: color }}>{position3d.z}</span>
             </label>
-            <input 
-              type="range" 
-              min="-10" max="10" step="1" 
-              value={position3d.z} 
-              onChange={(e) => setPosition3d({...position3d, z: Number(e.target.value)})} 
-            />
+            <input type="range" min="-10" max="10" step="1" value={position3d.z} onChange={(e) => setPosition3d({...position3d, z: Number(e.target.value)})} />
+
+            <h4 style={{ marginBottom: '1.5rem', marginTop: '3rem', color: 'var(--muted)' }}>3D Room Echo (Haas Effect)</h4>
+            <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontWeight: 600 }}>
+              <span>Echo Delay Time</span>
+              <span style={{ color: color }}>{(position3d.delayTime * 1000).toFixed(0)} ms</span>
+            </label>
+            <input type="range" min="0" max="1" step="0.05" value={position3d.delayTime} onChange={(e) => setPosition3d({...position3d, delayTime: Number(e.target.value)})} />
+            
+            <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', marginTop: '2rem', fontWeight: 600 }}>
+              <span>Echo Feedback (Amount)</span>
+              <span style={{ color: color }}>{(position3d.feedback * 100).toFixed(0)}%</span>
+            </label>
+            <input type="range" min="0" max="0.9" step="0.05" value={position3d.feedback} onChange={(e) => setPosition3d({...position3d, feedback: Number(e.target.value)})} />
           </div>
         );
       case 'autopanner':
         return (
           <div style={{ marginTop: '2rem' }}>
             <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontWeight: 600 }}>
-              <span>Rate (Hz)</span>
+              <span>LFO Shape</span>
+              <span style={{ color: color }}>{autoPan.type.toUpperCase()}</span>
+            </label>
+            <select 
+              value={autoPan.type} 
+              onChange={(e) => setAutoPan({...autoPan, type: e.target.value})}
+              style={{ width: '100%', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid var(--card-border)', borderRadius: 'var(--radius-md)', marginBottom: '2rem' }}
+            >
+              <option value="sine">Sine (Smooth)</option>
+              <option value="triangle">Triangle (Linear)</option>
+              <option value="square">Square (Hard Jump)</option>
+            </select>
+
+            <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontWeight: 600 }}>
+              <span>Rate (Speed)</span>
               <span style={{ color: color }}>{autoPan.rate} Hz</span>
             </label>
             <input type="range" min="0.1" max="10" step="0.1" value={autoPan.rate} onChange={(e) => setAutoPan({...autoPan, rate: Number(e.target.value)})} />
             
             <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', marginTop: '2rem', fontWeight: 600 }}>
-              <span>Depth</span>
+              <span>Pan Depth</span>
               <span style={{ color: color }}>{(autoPan.depth * 100).toFixed(0)}%</span>
             </label>
             <input type="range" min="0" max="1" step="0.05" value={autoPan.depth} onChange={(e) => setAutoPan({...autoPan, depth: Number(e.target.value)})} />
@@ -224,10 +252,45 @@ export default function EffectTool({ type, title, description, color, icon }) {
         return (
           <div style={{ marginTop: '2rem' }}>
             <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontWeight: 600 }}>
-              <span>Reverb Mix (Wet/Dry)</span>
-              <span style={{ color: color }}>{(reverb * 100).toFixed(0)}%</span>
+              <span>Wet / Dry Mix</span>
+              <span style={{ color: color }}>{(reverb.mix * 100).toFixed(0)}%</span>
             </label>
-            <input type="range" min="0" max="1" step="0.05" value={reverb} onChange={(e) => setReverb(Number(e.target.value))} />
+            <input type="range" min="0" max="1" step="0.05" value={reverb.mix} onChange={(e) => setReverb({...reverb, mix: Number(e.target.value)})} />
+            
+            <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', marginTop: '2rem', fontWeight: 600 }}>
+              <span>Room Size (Duration)</span>
+              <span style={{ color: color }}>{reverb.roomSize.toFixed(1)}s</span>
+            </label>
+            <input type="range" min="0.5" max="5.0" step="0.1" value={reverb.roomSize} onChange={(e) => setReverb({...reverb, roomSize: Number(e.target.value)})} />
+            
+            <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', marginTop: '2rem', fontWeight: 600 }}>
+              <span>Decay Time</span>
+              <span style={{ color: color }}>{reverb.decay.toFixed(1)}s</span>
+            </label>
+            <input type="range" min="0.5" max="5.0" step="0.1" value={reverb.decay} onChange={(e) => setReverb({...reverb, decay: Number(e.target.value)})} />
+          </div>
+        );
+      case 'slowed-reverb':
+        return (
+          <div style={{ marginTop: '2rem' }}>
+            <h4 style={{ marginBottom: '1.5rem', color: 'var(--muted)' }}>Ethereal Settings</h4>
+            <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontWeight: 600 }}>
+              <span>Playback Speed</span>
+              <span style={{ color: color }}>{tempo.toFixed(2)}x</span>
+            </label>
+            <input type="range" min="0.5" max="1" step="0.01" value={tempo} onChange={(e) => setTempo(Number(e.target.value))} />
+
+            <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', marginTop: '2rem', fontWeight: 600 }}>
+              <span>Reverb Room Size</span>
+              <span style={{ color: color }}>{reverb.roomSize.toFixed(1)}s</span>
+            </label>
+            <input type="range" min="1.0" max="6.0" step="0.1" value={reverb.roomSize} onChange={(e) => setReverb({...reverb, roomSize: Number(e.target.value)})} />
+            
+            <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', marginTop: '2rem', fontWeight: 600 }}>
+              <span>Reverb Mix</span>
+              <span style={{ color: color }}>{(reverb.mix * 100).toFixed(0)}%</span>
+            </label>
+            <input type="range" min="0" max="1" step="0.05" value={reverb.mix} onChange={(e) => setReverb({...reverb, mix: Number(e.target.value)})} />
           </div>
         );
       case 'reverse':

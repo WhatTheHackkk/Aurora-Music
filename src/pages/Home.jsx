@@ -40,6 +40,7 @@ const tools = [
   { id: 'trimmer', title: 'Trimmer / Cutter', description: 'Cut out a part of your audio file', icon: Scissors, color: '#DD6B20', category: 'effects' },
   { id: 'vocal-remover', title: 'Vocal Remover', description: 'Remove the vocals from a song leaving only the instrumental', icon: MicOff, color: '#D69E2E', category: 'effects', comingSoon: true },
   { id: 'downmixer', title: 'Downmixer', description: 'Reduce the amount of audio channels', icon: Merge, color: '#00B5D8', category: 'other' },
+  { id: 'slowed-reverb', title: 'Slowed + Reverb', description: 'Give your audio an ethereal, dreamy vibe', icon: Radio, color: '#805AD5', category: 'effects' },
 ];
 
 const containerVariants = {

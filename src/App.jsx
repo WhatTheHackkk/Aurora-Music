@@ -96,6 +96,7 @@ const AnimatedRoutes = () => {
         <Route path="/stereo-panner" element={<PageTransition><EffectTool type="stereo-panner" title="Stereo Panner" description="Pan the audio to left or right" icon="ArrowLeftRight" color="#D53F8C" /></PageTransition>} />
         <Route path="/trimmer" element={<PageTransition><EffectTool type="trimmer" title="Trimmer / Cutter" description="Cut out a part of your audio file" icon="Scissors" color="#DD6B20" /></PageTransition>} />
         <Route path="/downmixer" element={<PageTransition><EffectTool type="downmixer" title="Downmixer" description="Reduce the amount of audio channels" icon="Merge" color="#00B5D8" /></PageTransition>} />
+        <Route path="/slowed-reverb" element={<PageTransition><EffectTool type="slowed-reverb" title="Slowed + Reverb" description="Give your audio an ethereal, dreamy vibe" icon="Radio" color="#805AD5" /></PageTransition>} />
       </Routes>
     </AnimatePresence>
   );
